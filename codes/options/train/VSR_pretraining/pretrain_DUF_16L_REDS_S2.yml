@@ -1,0 +1,69 @@
+#### general settings
+name: Pretrain_DUF_16L_REDS_S2
+use_tb_logger: true
+model: video_base
+distortion: sr
+scale: 2
+gpu_ids: [2] # [0,1,2,3,4,5,6,7]
+
+#### datasets
+datasets:
+  train:
+    name: REDS
+    mode: REDS
+    interval_list: [1]
+    random_reverse: false
+    border_mode: false
+    data_root: '../dataset'
+    img_type: bin
+
+    N_frames: 7
+    use_shuffle: true
+    n_workers: 3  # per GPU
+    batch_size: 4
+    patch_size: 48
+    use_flip: true
+    use_rot: true
+    color: RGB
+  val:
+    name: REDS
+    mode: video_test
+    dataroot_GT: ../dataset/REDS/train/HR
+    dataroot_LQ: ../dataset/REDS/train/LR_bicubic
+    cache_data: True
+    N_frames: 7
+    padding: new_info
+
+#### network structures
+network_G:
+  which_model_G: DUF
+  layers: 16
+
+#### path
+path:
+  pretrain_model_G: ../experiments/pretrained_models/DUF_x2_16L_official.pth
+  strict_load: true
+  resume_state: ~
+
+#### training settings: learning rate scheme, loss
+train:
+  lr_G: !!float 1e-4
+  lr_scheme: MultiStepLR
+  beta1: 0.9
+  beta2: 0.99
+  epochs: 1000
+  niter: 200000
+  warmup_iter: -1  # -1: no warm up
+  lr_steps: [100000, 150000]
+  lr_gamma: 0.2
+
+  pixel_criterion: huber
+  pixel_weight: 1.0
+  val_freq: !!float 1e4 #5e3
+
+  manual_seed: 0
+
+#### logger
+logger:
+  print_freq: 500 #250
+  save_checkpoint_freq: !!float 5e3

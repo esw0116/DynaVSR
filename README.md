@@ -1,7 +1,7 @@
 # DynaVSR
 DynaVSR: Dynamic Adaptive Blind VideoSuper-Resolution
 
-#### Suyoung Lee*, Myungsub Choi*, Kyoung Mu Lee
+#### Suyoung Lee\*, Myungsub Choi\*, Kyoung Mu Lee
 
 
 ## Directory Structure

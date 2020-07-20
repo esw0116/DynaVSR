@@ -207,192 +207,7 @@ def main():
         cropped_hr = torch.stack(cropped_hr, dim=0)
 
         return cropped_lr, cropped_hr
-    '''
-    if opt['dist']:
-        # multi-GPU testing
-        # PSNR_rlt: psnr_init, psnr_before, psnr_after
-        psnr_rlt = [{}, {}, {}]
-        # SSIM_rlt: ssim_init, ssim_after
-        ssim_rlt = [{}, {}]
 
-        if rank == 0:
-            pbar = util.ProgressBar(len(val_set))
-        for idx in range(rank, len(val_set), world_size):
-            val_data = val_set[idx]
-            if 'name' in val_data.keys():
-                name = val_data['name'][center_idx][0]
-            else:
-                name = '{}/{:08d}'.format(val_data['folder'], int(val_data['idx'].split('/')[0]))
-
-            train_folder = os.path.join('../results', folder_name, name)
-            if not os.path.isdir(train_folder):
-                os.makedirs(train_folder, exist_ok=True)
-
-            val_data['SuperLQs'].unsqueeze_(0)
-            val_data['LQs'].unsqueeze_(0)
-            val_data['GT'].unsqueeze_(0)
-            folder = val_data['folder']
-            idx_d, max_idx = val_data['idx'].split('/')
-            idx_d, max_idx = int(idx_d), int(max_idx)
-            for i in range(len(psnr_rlt)):
-                if psnr_rlt[i].get(folder, None) is None:
-                    psnr_rlt[i][folder] = torch.zeros(max_idx, dtype=torch.float32, device='cuda')
-            for i in range(len(ssim_rlt)):
-                if ssim_rlt[i].get(folder, None) is None:
-                    ssim_rlt[i][folder] = torch.zeros(max_idx, dtype=torch.float32, device='cuda')
-
-            cropped_meta_train_data = {}
-            meta_train_data = {}
-            meta_test_data = {}
-
-            # Make SuperLR seq using estimation model
-            meta_train_data['GT'] = val_data['LQs'][:, center_idx]
-            meta_test_data['LQs'] = val_data['LQs'][0:1]
-            meta_test_data['GT'] = val_data['GT'][0:1, center_idx]
-            # Check whether the batch size of each validation data is 1
-            assert val_data['SuperLQs'].size(0) == 1
-
-            #modelcp.netG = deepcopy(model.netG)
-            modelcp.netG, est_modelcp.netE = deepcopy(model.netG), deepcopy(est_model.netE)
-
-            optim_params = []
-            for k, v in modelcp.netG.named_parameters():
-                if v.requires_grad:
-                    optim_params.append(v)
-            for k, v in est_modelcp.netE.named_parameters():
-                if v.requires_grad:
-                    optim_params.append(v)
-            if opt['train']['maml']['optimizer'] == 'Adam':
-                inner_optimizer = torch.optim.Adam(optim_params, lr=lr_alpha,
-                                                  betas=(
-                                                  opt['train']['maml']['beta1'], opt['train']['maml']['beta2']))
-            elif opt['train']['maml']['optimizer'] == 'SGD':
-                inner_optimizer = torch.optim.SGD(optim_params, lr=lr_alpha)
-            else:
-                raise NotImplementedError()
-
-            psnr_rlt[0][folder][idx_d] = 0.1
-            ssim_rlt[0][folder][idx_d] = 0.1
-
-            #### Forward
-            # Before (After Meta update, Before Inner update)
-            modelcp.feed_data(meta_test_data)
-            modelcp.test()
-            model_start_visuals = modelcp.get_current_visuals(need_GT=True)
-            hr_image = util.tensor2img(model_start_visuals['GT'], mode='rgb')
-            start_image = util.tensor2img(model_start_visuals['rlt'], mode='rgb')
-            imageio.imwrite(os.path.join(train_folder, 'sr_start.png'), start_image)
-            psnr_rlt[1][folder][idx_d] = util.calculate_psnr(start_image, hr_image)
-            # Inner Loop Update
-            st = time.time()
-            for i in range(update_step):
-
-                # Make SuperLR seq using UPDATED estimation model
-                if not opt['train']['use_real']:
-                    est_modelcp.feed_data(val_data)
-                    #est_model.test()
-                    est_modelcp.forward_without_optim()
-                    superlr_seq = est_modelcp.fake_L
-                    meta_train_data['LQs'] = superlr_seq
-                else:
-                    meta_train_data['LQs'] = val_data['SuperLQs']
-
-                # Update both modelcp + estmodelcp jointly
-                inner_optimizer.zero_grad()
-                if opt['train']['maml']['use_patch']:
-                    cropped_meta_train_data['LQs'], cropped_meta_train_data['GT'] = \
-                        crop(meta_train_data['LQs'], meta_train_data['GT'],
-                            opt['train']['maml']['num_patch'],
-                            opt['train']['maml']['patch_size'])
-                    modelcp.feed_data(cropped_meta_train_data)
-                else:
-                    modelcp.feed_data(meta_train_data)
-
-                loss_train = modelcp.calculate_loss()
-                loss_train.backward()
-                inner_optimizer.step()
-
-            et = time.time()
-            update_time = et - st
-
-            modelcp.feed_data(meta_test_data)
-            modelcp.test()
-            model_update_visuals = modelcp.get_current_visuals(need_GT=False)
-            update_image = util.tensor2img(model_update_visuals['rlt'], mode='rgb')
-            # Save and calculate final image
-            imageio.imwrite(os.path.join(train_folder, 'sr_finish.png'), update_image)
-            psnr_rlt[2][folder][idx_d] = util.calculate_psnr(update_image, hr_image)
-            #ssim_rlt[1][folder][idx_d] = util.calculate_ssim(update_image, hr_image)
-
-            if name in pd_log.index:
-                pd_log.at[name, 'PSNR_Init'] = psnr_rlt[0][folder][idx_d].item()
-                pd_log.at[name, 'PSNR_Start'] = (psnr_rlt[1][folder][idx_d] - psnr_rlt[0][folder][idx_d]).item()
-                pd_log.at[name, 'PSNR_Final({})'.format(update_step)] = (psnr_rlt[2][folder][idx_d] - psnr_rlt[0][folder][idx_d]).item()
-                pd_log.at[name, 'SSIM_Init'] = ssim_rlt[0][folder][idx_d].item()
-                pd_log.at[name, 'SSIM_Final'] = ssim_rlt[1][folder][idx_d].item()
-            else:
-                pd_log.loc[name] = [psnr_rlt[0][folder][idx_d].item(),
-                                    psnr_rlt[1][folder][idx_d].item() - psnr_rlt[0][folder][idx_d].item(),
-                                    psnr_rlt[2][folder][idx_d].item() - psnr_rlt[0][folder][idx_d].item(),
-                                    ssim_rlt[0][folder][idx_d].item(), ssim_rlt[1][folder][idx_d].item()]
-
-            pd_log.to_csv(os.path.join('../results', folder_name, 'psnr_update.csv'))
-
-            del modelcp.netG, est_modelcp.netE
-            if rank == 0:
-                for _ in range(world_size):
-                    pbar.update('Test {} - {}/{}: I: {:.3f}/{:.4f} \tF+: {:.3f}/{:.4f} \tTime: {:.3f}s'
-                                .format(folder, idx_d, max_idx,
-                                        psnr_rlt[0][folder][idx_d].item(), ssim_rlt[0][folder][idx_d].item(),
-                                        psnr_rlt[2][folder][idx_d].item(), ssim_rlt[1][folder][idx_d].item(),
-                                        update_time
-                                        ))
-
-        ## collect data
-        for i in range(len(psnr_rlt)):
-            for _, v in psnr_rlt[i].items():
-                dist.reduce(v, 0)
-        for i in range(len(ssim_rlt)):
-            for _, v in ssim_rlt[i].items():
-                dist.reduce(v, 0)
-        dist.barrier()
-
-        if rank == 0:
-            psnr_rlt_avg = {}
-            psnr_total_avg = [0., 0., 0.]
-            # 0: Init, 1: Start, 2: Final
-            #Just calculate the final value of psnr_rlt(i.e. psnr_rlt[2])
-            for k, v_init in psnr_rlt[0].items():
-                v_start = psnr_rlt[1][k]
-                v_final = psnr_rlt[2][k]
-                psnr_rlt_avg[k] = [torch.sum(v_init).cpu().item() / (v_init!=0).sum().item(),
-                                     torch.sum(v_start).cpu().item() / (v_start!=0).sum().item(),
-                                     torch.sum(v_final).cpu().item() / (v_final!=0).sum().item()]
-                for i in range(len(psnr_rlt)):
-                    psnr_total_avg[i] += psnr_rlt_avg[k][i]
-            for i in range(len(psnr_rlt)):
-                psnr_total_avg[i] /= len(psnr_rlt[0])
-            log_s = '# Validation # Final PSNR: {:.4e}:'.format(psnr_total_avg[2])
-            for k, v in psnr_rlt_avg.items():
-                log_s += ' {}: {:.4e}'.format(k, v[2])
-            logger.info(log_s)
-
-            ssim_rlt_avg = {}
-            ssim_total_avg = 0.
-            #Just calculate the final value of ssim_rlt(i.e. ssim_rlt[1])
-            for k, v in ssim_rlt[1].items():
-                ssim_rlt_avg[k] = torch.sum(v).cpu().item() / (v!=0).sum().item()
-                ssim_total_avg += ssim_rlt_avg[k]
-            ssim_total_avg /= len(ssim_rlt[1])
-            log_s = '# Validation # SSIM: {:.4e}:'.format(ssim_total_avg)
-            for k, v in ssim_rlt_avg.items():
-                log_s += ' {}: {:.4e}'.format(k, v)
-            logger.info(log_s)
-
-        termination = True
-
-    else:
-    '''
     # Single GPU
     # PSNR_rlt: psnr_init, psnr_before, psnr_after
     psnr_rlt = [{}, {}]
@@ -455,7 +270,7 @@ def main():
             LQs = LQs.reshape(B*T, C, H, W)
             Bic_LQs = F.interpolate(LQs, scale_factor=opt['scale'], mode='bicubic', align_corners=True)
             meta_test_data['LQs'] = Bic_LQs.reshape(B, T, C, H*opt['scale'], W*opt['scale'])
-        '''
+        
         ## Before start training, first save the bicubic, real outputs
         # Bicubic
         modelcp.load_network(opt['path']['bicubic_G'], modelcp.netG)
@@ -464,20 +279,12 @@ def main():
         model_start_visuals = modelcp.get_current_visuals(need_GT=True)
         hr_image = util.tensor2img(model_start_visuals['GT'], mode='rgb')
         start_image = util.tensor2img(model_start_visuals['rlt'], mode='rgb')
-        #imageio.(os.path.join(train_folder, 'hr.png'), hr_image)
-        #imageio.imwrite(os.path.join(train_folder, 'sr_1bicubic.png'), start_image)
-        '''
-        model.feed_data(meta_test_data)
-        model.test()
-        model_start_visuals = model.get_current_visuals(need_GT=True)
-        hr_image = util.tensor2img(model_start_visuals['GT'], mode='rgb')
-        start_image = util.tensor2img(model_start_visuals['rlt'], mode='rgb')
+
         #####imageio.imwrite(os.path.join(hr_train_folder, '{:08d}.png'.format(idx_d)), hr_image)
         #####imageio.imwrite(os.path.join(bic_train_folder, '{:08d}.png'.format(idx_d)), start_image)
         psnr_rlt[0][folder].append(util.calculate_psnr(start_image, hr_image))
-        #ssim_rlt[0][folder].append(util.calculate_ssim(start_image, hr_image)) #.append(0.1)
-        ssim_rlt[0][folder].append(0.2)
-        # modelcp.netG = deepcopy(model.netG)
+        ssim_rlt[0][folder].append(util.calculate_ssim(start_image, hr_image))
+
         modelcp.netG, est_modelcp.netE = deepcopy(model.netG), deepcopy(est_model.netE)
 
         ########## SLR LOSS Preparation ############
@@ -487,7 +294,6 @@ def main():
         for k, v in modelcp.netG.named_parameters():
             if v.requires_grad:
                 optim_params.append(v)
-        
         
         if not opt['train']['use_real']:
             for k, v in est_modelcp.netE.named_parameters():
@@ -504,19 +310,6 @@ def main():
         else:
             raise NotImplementedError()
 
-        '''
-        #### Forward
-        # Before (After Meta update, Before Inner update)
-        # modelcp.feed_data(meta_test_data)
-        # modelcp.test()
-        # model_start_visuals = modelcp.get_current_visuals(need_GT=True)
-        # hr_image = util.tensor2img(model_start_visuals['GT'], mode='rgb')
-        # start_image = util.tensor2img(model_start_visuals['rlt'], mode='rgb')
-        # imageio.imwrite(os.path.join(train_folder, 'hr.png'), hr_image)
-        # imageio.imwrite(os.path.join(train_folder, 'sr_basereal.png'), start_image)
-        # psnr_rlt[1][folder].append(util.calculate_psnr(start_image, hr_image))
-        # psnr_rlt[1][folder].append(0)
-        '''
         # Inner Loop Update
         st = time.time()
         for i in range(update_step):
@@ -569,22 +362,14 @@ def main():
 
         modelcp.feed_data(meta_test_data)
         modelcp.test()
-        '''
-        # Save SLR image
-        est_modelcp.feed_data(val_data)
-        est_modelcp.test()
-        est_model_visuals = est_modelcp.get_current_visuals(need_GT=False)
-        slr_image = util.tensor2img(est_model_visuals['rlt'], mode='rgb')
-        imageio.imwrite(os.path.join(slr_train_folder, '{:08d}.png'.format(idx_d)), slr_image)
-        '''
+
         model_update_visuals = modelcp.get_current_visuals(need_GT=False)
         update_image = util.tensor2img(model_update_visuals['rlt'], mode='rgb')
         # Save and calculate final image
-        #imageio.imwrite(os.path.join(train_folder, 'sr_ours.png'), update_image)
-        #####imageio.imwrite(os.path.join(maml_train_folder, '{:08d}.png'.format(idx_d)), update_image)
+        imageio.imwrite(os.path.join(maml_train_folder, '{:08d}.png'.format(idx_d)), update_image)
         psnr_rlt[1][folder].append(util.calculate_psnr(update_image, hr_image))
-        #ssim_rlt[1][folder].append(util.calculate_ssim(update_image, hr_image))
-        ssim_rlt[1][folder].append(0.1)
+        ssim_rlt[1][folder].append(util.calculate_ssim(update_image, hr_image))
+
         name_df = '{}/{:08d}'.format(folder, idx_d)
         if name_df in pd_log.index:
             pd_log.at[name_df, 'PSNR_Bicubic'] = psnr_rlt[0][folder][-1]

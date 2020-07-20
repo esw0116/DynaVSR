@@ -1,6 +1,8 @@
 # DynaVSR
 DynaVSR: Dynamic Adaptive Blind VideoSuper-Resolution
 
+#### Suyoung Lee*, Myungsub Choi*, Kyoung Mu Lee
+
 
 ## Directory Structure
 
@@ -35,6 +37,9 @@ project
 |   train_mfdn.py - code for training MFDN, SFDN network
 |   test_maml.py - code for testing DynaVSR
 |   test_Vid4_REDS4_with_GT(_DUF, _TOF).py - code for testing baseline VSR network
+|   run_downscaling.sh - scripts for generating LR images
+|   run_visual.sh - scripts for testing DynaVSR
+| ...
 ```
 
 ## Dependencies
@@ -65,8 +70,7 @@ pip install pywavelets
 
 ## Dataset Preparation
 
-- **[Vimeo90K](http://toflow.csail.mit.edu/)**: Training
-- **[Vid4](https://drive.google.com/drive/folders/10-gUO6zBeOpWEamrWKCtSkkUFukB9W5m)**: Validation
+- **[Vimeo90K](http://toflow.csail.mit.edu/)**: Training / **[Vid4](https://drive.google.com/drive/folders/10-gUO6zBeOpWEamrWKCtSkkUFukB9W5m)**: Validation
 - **[REDS](https://seungjunnah.github.io/Datasets/reds)**: Training, Validation
   - download *train_sharp* data
 - after downloading the dataset, use run_downscaling.sh to make lr, slr images
@@ -76,14 +80,42 @@ pip install pywavelets
 
 ## Usage
 
+- To run EDVR, first install [Deformable Convolution](https://arxiv.org/abs/1703.06211). We use [mmdetection](https://github.com/open-mmlab/mmdetection)'s dcn implementation. Please first compile it.
+  ```
+  cd ./codes/models/archs/dcn
+  python setup.py develop
+  ```
+#### Training
+Two ways to train DynaVSR network.
+- Distributed training(When using multiple GPUs).
+  ```
+  cd ./codes
+  python -m torch.distributed.launch --nproc_per_node=8 --master_port=4321 train_dynavsr.py -opt options/train/[Path to YML file] --launcher pytorch --exp_name [Experiment Name]
+  ```
+- Single GPU training.
+  ```
+  cd ./codes
+  python train_dynavsr.py -opt options/train/[Path to YML file] --exp_name [Experiment Name]
+  ```
+
+#### Testing
+- We just support single GPU for testing.
+  ```
+  cd ./codes
+  python test_dynavsr.py -opt options/train/[Path to YML file]
+  ```
+- Or just use `run_visual.sh`
+  ```
+  sh ./codes/run_visual.sh
+  ```
+
 ## Results
 
-<center><img src="./figures/qualitative_vimeo.png" width="100%"></center>
-
+<center><img src="./figures/dynavsr_qualitative1.png" width="100%"></center>
 
 ## Acknowledgement
 
 The code is built based on 
 
-- [EDVR-Pytorch](https://github.com/thstkdgus35/EDSR-PyTorch)
+- [EDVR-Pytorch](https://github.com/xinntao/EDVR)
 

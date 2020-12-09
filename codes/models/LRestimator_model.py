@@ -71,15 +71,16 @@ class LRimgestimator_Model(BaseModel):
             self.netE = DataParallel(self.netE)
         self.load()
 
+        # loss
+        if train_opt['loss_ftn'] == 'l1':
+            self.MyLoss = nn.L1Loss(reduction='mean').to(self.device)
+        elif train_opt['loss_ftn'] == 'l2':
+            self.MyLoss = nn.MSELoss(reduction='mean').to(self.device)
+        else:
+            self.MyLoss = None
+
         if self.is_train:
             self.netE.train()
-            # loss
-            if train_opt['loss_ftn'] == 'l1':
-                self.MyLoss = nn.L1Loss(reduction='mean').to(self.device)
-            elif train_opt['loss_ftn'] == 'l2':
-                self.MyLoss = nn.MSELoss(reduction='mean').to(self.device)
-            else:
-                self.MyLoss = None
 
             # optimizers
             self.optimizers = []

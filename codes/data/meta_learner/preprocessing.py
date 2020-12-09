@@ -3,7 +3,6 @@ import random
 import torch
 import math
 import numpy as np
-import pywt
 import data.util as data_util
 import time
 
@@ -142,6 +141,8 @@ def crop(img_gt, img, img_lr, scale=2, patch_size=96):
     Return:
 
     '''
+    import pywt
+
     # Find the lowest resolution
     h, w = img.shape[-2] // 2, img.shape[-1] // 2
     # T C H W  --> H W T

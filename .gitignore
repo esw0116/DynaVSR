@@ -9,6 +9,7 @@ tb_logger/*
 *.gif
 *.pt
 *.pth
+*.npy
 *.pytorch
 *.swp
 
@@ -125,8 +126,7 @@ venv.bak/
 dataset
 experiments
 results
-result
-results_for_paper
+test_results
 *.csv
 
 #Pycharm
@@ -135,9 +135,3 @@ results_for_paper
 modules.xml
 .idea/misc.xml
 *.ipr
-
-# Some experimental codes
-codes/train_exp.py
-#codes/test_Vid4_REDS4_with_GT.py
-#codes/test_Vid4_REDS4_with_GT_DUF.py
-#codes/test_Vid4_REDS4_with_GT_TOF.py

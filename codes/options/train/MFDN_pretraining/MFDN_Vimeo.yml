@@ -1,5 +1,5 @@
 #### general settings
-name: LRimg_est_R+V_img_final
+name: LRimg_est_V_vid_diff
 use_tb_logger: true
 model: lrimgestimator
 distortion: sr
@@ -10,7 +10,7 @@ gpu_ids: [7]
 #### datasets
 datasets:
   train:
-    name: REDS+Vimeo
+    name: Vimeo
     mode: MM522
     interval_list: [1]
     random_reverse: false
@@ -26,10 +26,10 @@ datasets:
     kernel_size: 21
     color: RGB
   val:
-    name: Vid4+REDS
+    name: Vid4
     mode: benchmark
-    dataroot_GT: ../dataset/Vid4/HR+../dataset/REDS/train/HR # 
-    dataroot_LQ: ../dataset/Vid4/LR+../dataset/REDS/train/LR # 
+    dataroot_GT: ../dataset/Vid4/HR
+    dataroot_LQ: ../dataset/Vid4/LR
     cache_data: True
     N_frames: 5
     padding: new_info
@@ -37,9 +37,10 @@ datasets:
 
 #### network structures
 network_E:
-  which_model_E: img_baseline
-  mode: image
+  which_model_E: MFDN
+  mode: video
   nf: 64
+  in_nc: 3
 
 network_G:
   which_model_G: EDVR
@@ -72,11 +73,11 @@ train:
   lr_gamma: 0.2
 
   loss_ftn: l1
-  val_freq: !!float 5e3
+  val_freq: !!float 2.5e3
 
   manual_seed: 0
 
 #### logger
 logger:
   print_freq: 200
-  save_checkpoint_freq: !!float 5e3
+  save_checkpoint_freq: !!float 2.5e3

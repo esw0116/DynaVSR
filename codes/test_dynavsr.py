@@ -44,9 +44,9 @@ def main():
     parser.add_argument('--theta', type=float, default=None)
     args = parser.parse_args()
     if args.exp_name == 'temp':
-        opt = option.parse(args.opt, is_train=True)
+        opt = option.parse(args.opt, is_train=False)
     else:
-        opt = option.parse(args.opt, is_train=True, exp_name=args.exp_name)
+        opt = option.parse(args.opt, is_train=False, exp_name=args.exp_name)
 
     # convert to NoneDict, which returns None for missing keys
     opt = option.dict_to_nonedict(opt)
@@ -78,65 +78,6 @@ def main():
     if args.exp_name != 'temp':
         folder_name = args.exp_name
 
-    #### distributed training settings
-    if args.launcher == 'none':  # disabled distributed training
-        opt['dist'] = False
-        rank = -1
-        print('Disabled distributed training.')
-    else:
-        opt['dist'] = True
-        init_dist()
-        world_size = torch.distributed.get_world_size()
-        rank = torch.distributed.get_rank()
-
-    #### loading resume state if exists
-    if opt['path'].get('resume_state', None):
-        # distributed resuming: all load into default GPU
-        device_id = torch.cuda.current_device()
-        resume_state = torch.load(opt['path']['resume_state'],
-                                  map_location=lambda storage, loc: storage.cuda(device_id))
-        option.check_resume(opt, resume_state['iter'])  # check resume options
-    else:
-        resume_state = None
-
-    #### mkdir and loggers
-    if rank <= 0:  # normal training (rank -1) OR distributed training (rank 0)
-        if resume_state is None:
-            #util.mkdir_and_rename(
-            #    opt['path']['experiments_root'])  # rename experiment folder if exists
-            #util.mkdirs((path for key, path in opt['path'].items() if not key == 'experiments_root'
-            #             and 'pretrain_model' not in key and 'resume' not in key))
-            if not os.path.exists(opt['path']['experiments_root']):
-                os.mkdir(opt['path']['experiments_root'])
-                # raise ValueError('Path does not exists - check path')
-
-        # config loggers. Before it, the log will not work
-        util.setup_logger('base', opt['path']['log'], 'train_' + opt['name'], level=logging.INFO,
-                          screen=True, tofile=True)
-        logger = logging.getLogger('base')
-        #logger.info(option.dict2str(opt))
-        # tensorboard logger
-        if opt['use_tb_logger'] and 'debug' not in opt['name']:
-            version = float(torch.__version__[0:3])
-            if version >= 1.1:  # PyTorch 1.1
-                from torch.utils.tensorboard import SummaryWriter
-            else:
-                logger.info(
-                    'You are using PyTorch {}. Tensorboard will use [tensorboardX]'.format(version))
-                from tensorboardX import SummaryWriter
-            tb_logger = SummaryWriter(log_dir='../tb_logger/' + folder_name)
-    else:
-        util.setup_logger('base', opt['path']['log'], 'train', level=logging.INFO, screen=True)
-        logger = logging.getLogger('base')
-
-    #### random seed
-    seed = opt['train']['manual_seed']
-    if seed is None:
-        seed = random.randint(1, 10000)
-    if rank <= 0:
-        logger.info('Random seed: {}'.format(seed))
-    util.set_random_seed(seed)
-
     torch.backends.cudnn.benchmark = False
     torch.backends.cudnn.deterministic = True
 
@@ -160,9 +101,9 @@ def main():
                                          model_name=opt['network_E']['which_model_E'])
                 # val_set = loader.get_dataset(opt, train=False)
                 val_loader = create_dataloader(val_set, dataset_opt, opt, None)
-            if rank <= 0:
-                logger.info('Number of val images in [{:s}]: {:d}'.format(
-                    dataset_opt['name'], len(val_set)))
+            if True: #rank <= 0:
+                # logger.info('Number of val images in [{:s}]: {:d}'.format(dataset_opt['name'], len(val_set)))
+                print('Number of val images in [{:s}]: {:d}'.format(dataset_opt['name'], len(val_set)))
         else:
             raise NotImplementedError('Phase [{:s}] is not recognized.'.format(phase))
 
@@ -220,17 +161,14 @@ def main():
         if 'name' in val_data.keys():
             name = val_data['name'][0][center_idx][0]
         else:
-            #name = '{}/{:08d}'.format(folder, idx_d)
             name = folder
 
-        train_folder = os.path.join('../results_for_paper', folder_name, name)
+        train_folder = os.path.join('../test_results', folder_name, name)
 
         hr_train_folder = os.path.join(train_folder, 'hr')
         bic_train_folder = os.path.join(train_folder, 'bic')
         maml_train_folder = os.path.join(train_folder, 'maml')
-        #slr_train_folder = os.path.join(train_folder, 'slr')
 
-        # print(train_folder)
         if not os.path.exists(train_folder):
             os.makedirs(train_folder, exist_ok=False)
         if not os.path.exists(hr_train_folder):
@@ -239,8 +177,6 @@ def main():
             os.mkdir(bic_train_folder)
         if not os.path.exists(maml_train_folder):
             os.mkdir(maml_train_folder)
-        #if not os.path.exists(slr_train_folder):
-        #    os.mkdir(slr_train_folder)
 
         for i in range(len(psnr_rlt)):
             if psnr_rlt[i].get(folder, None) is None:
@@ -280,8 +216,6 @@ def main():
         hr_image = util.tensor2img(model_start_visuals['GT'], mode='rgb')
         start_image = util.tensor2img(model_start_visuals['rlt'], mode='rgb')
 
-        #####imageio.imwrite(os.path.join(hr_train_folder, '{:08d}.png'.format(idx_d)), hr_image)
-        #####imageio.imwrite(os.path.join(bic_train_folder, '{:08d}.png'.format(idx_d)), start_image)
         psnr_rlt[0][folder].append(util.calculate_psnr(start_image, hr_image))
         ssim_rlt[0][folder].append(util.calculate_ssim(start_image, hr_image))
 
@@ -316,7 +250,6 @@ def main():
             # Make SuperLR seq using UPDATED estimation model
             if not opt['train']['use_real']:
                 est_modelcp.feed_data(val_data)
-                # est_model.test()
                 est_modelcp.forward_without_optim()
                 superlr_seq = est_modelcp.fake_L
                 meta_train_data['LQs'] = superlr_seq
@@ -381,7 +314,7 @@ def main():
                                 psnr_rlt[1][folder][-1],
                                 ssim_rlt[0][folder][-1], ssim_rlt[1][folder][-1]]
 
-        pd_log.to_csv(os.path.join('../results_for_paper', folder_name, 'psnr_update.csv'))
+        pd_log.to_csv(os.path.join('../test_results', folder_name, 'psnr_update.csv'))
 
         pbar.update('Test {} - {}: I: {:.3f}/{:.4f} \tF+: {:.3f}/{:.4f} \tTime: {:.3f}s'
                         .format(folder, idx_d,
@@ -400,7 +333,7 @@ def main():
     log_s = '# Validation # Bic PSNR: {:.4e}:'.format(psnr_total_avg)
     for k, v in psnr_rlt_avg.items():
         log_s += ' {}: {:.4e}'.format(k, v)
-    logger.info(log_s)
+    print(log_s)
 
     psnr_rlt_avg = {}
     psnr_total_avg = 0.
@@ -412,7 +345,7 @@ def main():
     log_s = '# Validation # PSNR: {:.4e}:'.format(psnr_total_avg)
     for k, v in psnr_rlt_avg.items():
         log_s += ' {}: {:.4e}'.format(k, v)
-    logger.info(log_s)
+    print(log_s)
 
     ssim_rlt_avg = {}
     ssim_total_avg = 0.
@@ -424,7 +357,7 @@ def main():
     log_s = '# Validation # Bicubic SSIM: {:.4e}:'.format(ssim_total_avg)
     for k, v in ssim_rlt_avg.items():
         log_s += ' {}: {:.4e}'.format(k, v)
-    logger.info(log_s)
+    print(log_s)
 
     ssim_rlt_avg = {}
     ssim_total_avg = 0.
@@ -436,9 +369,9 @@ def main():
     log_s = '# Validation # SSIM: {:.4e}:'.format(ssim_total_avg)
     for k, v in ssim_rlt_avg.items():
         log_s += ' {}: {:.4e}'.format(k, v)
-    logger.info(log_s)
+    print(log_s)
 
-    logger.info('End of evaluation.')
+    print('End of evaluation.')
 
 if __name__ == '__main__':
     main()

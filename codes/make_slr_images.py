@@ -22,7 +22,6 @@ def main():
     # configurations
     #################
     device = torch.device('cuda')
-    #os.environ['CUDA_VISIBLE_DEVICES'] = '6'
 
     prog = argparse.ArgumentParser()
     prog.add_argument('--dataset_mode', '-m', type=str, default='Vid4+REDS', help='data_mode')
@@ -45,8 +44,6 @@ def main():
     N_in = 5
     ############################################################################
 
-    # model = EDVR_arch.EDVR(n_feats, N_in, 8, 5, back_RBs, predeblur=False, HR_in=False, scale=scale)
-    # est_model = LR_arch.DirectKernelEstimator_CMS(nf=n_feats)
     data_mode_l = data_modes.split('+')
 
     for i in range(len(data_mode_l)):
@@ -69,7 +66,6 @@ def main():
             os.makedirs(save_folder)
 
         subfolder_name_l = []
-        # subfolder_l = sorted(glob.glob(osp.join(bicubic_dataset_folder, '*')))
         subfolder_LR_l = sorted(glob.glob(osp.join(LR_dataset_folder, '*')))
         if data_mode == 'REDS':
             subfolder_LR_l = [k for k in subfolder_LR_l if
@@ -81,7 +77,6 @@ def main():
         if args.model == 'SFDN':
             model = LRest.DirectKernelEstimator_CMS(nf=64)
             model.load_state_dict(torch.load('../experiments/pretrained_models/LRestimator_{}_img_fin.pth'.format(args.dataset_mode[0])), strict=True)
-            # model.load_state_dict(torch.load('../experiments/pretrained_models/EDVR/EDVR_LRV_REDS_2100_E.pth'.format(args.dataset_mode[0])), strict=True)
         else:
             model = LRest.DirectKernelEstimatorVideo(in_nc=3, nf=64)
             model.load_state_dict(torch.load('../experiments/pretrained_models/LRestimator_{}_vid_large.pth'.format(args.dataset_mode[0])), strict=True)
@@ -99,10 +94,6 @@ def main():
             img_LR_path_l = sorted(glob.glob(osp.join(subfolder_LR, '*')))
             max_idx = len(img_LR_path_l)
 
-            # max_idx = len(img_GT_path_l)
-            # if save_imgs:
-            #    util.mkdirs(save_subfolder)
-
             #### read LQ and GT images
             imgs_LR = data_util.read_img_seq(subfolder_LR)  # T C H W
             if args.model == 'SFDN':
@@ -119,7 +110,6 @@ def main():
                             filename = osp.basename(img_LR_path_l[count])
                             imageio.imwrite(osp.join(save_subfolder, filename), img_lr)
                             count += 1
-
             
             else:
                  for img_idx, img_path in enumerate(img_LR_path_l):

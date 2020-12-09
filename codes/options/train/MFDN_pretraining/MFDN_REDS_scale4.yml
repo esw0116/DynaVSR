@@ -1,72 +1,83 @@
 #### general settings
-name: BLINDnew_FT_TOF_V_S2
+name: LRimgest_R_S4_video5
 use_tb_logger: true
-model: video_base
+model: lrimgestimator
 distortion: sr
-scale: 2
-gpu_ids: [1] # [0,1,2,3,4,5,6,7]
+scale: 4
+cpu: false
+gpu_ids: [7]
 
 #### datasets
 datasets:
   train:
-    name: Vimeo
-    mode: Vimeo
+    name: REDS
+    mode: MM522
     interval_list: [1]
     random_reverse: false
     border_mode: false
     data_root: '../dataset'
-    img_type: img
+    img_type: bin
 
-    N_frames: 7
+    N_frames: 5
     use_shuffle: true
     n_workers: 3  # per GPU
     batch_size: 4
-    patch_size: 64
-    use_flip: true
-    use_rot: true
+    patch_size: 128
     kernel_size: 21
     color: RGB
   val:
-    name: Vid4 #+REDS
+    name: REDS #Vid4+
     mode: video_test
-    dataroot_GT: ../dataset/Vid4/HR #+../dataset/REDS/train/HR
-    dataroot_LQ: ../dataset/Vid4/LR_bicubic #+../dataset/REDS/train/LR_bicubic
+    dataroot_GT: ../dataset/REDS/train/HR
+    dataroot_LQ: ../dataset/REDS/train/LR_bicubic
     cache_data: True
-    N_frames: 7
+    N_frames: 5
     padding: new_info
     degradation_mode: preset
 
 #### network structures
-network_G:
-  which_model_G: TOF
-
 network_E:
-  which_model_E: ~
+  which_model_E: MFDN
+  mode: video
+  nf: 64
+  in_nc: 3
+
+network_G:
+  which_model_G: EDVR
+  nf: 64
+  nframes: 5
+  groups: 8
+  front_RBs: 5
+  back_RBs: 10
+  predeblur: false
+  HR_in: false
+  w_TSA: true
+
 #### path
 path:
-  pretrain_model_G: ../experiments/pretrained_models/TOF_official.pth
+  pretrain_model: ~
   strict_load: true
   resume_state: ~
+  img_save_path: ../results
 
 #### training settings: learning rate scheme, loss
 train:
-  lr_G: !!float 5e-5 # 4e-4
+  lr_C: !!float 5e-4
   lr_scheme: MultiStepLR
   beta1: 0.9
   beta2: 0.99
-  epochs: 1000
+  epochs: 100
   niter: 100000
   warmup_iter: -1  # -1: no warm up
   lr_steps: [50000, 75000]
   lr_gamma: 0.2
 
-  pixel_criterion: l1
-  pixel_weight: 1.0
-  val_freq: !!float 2500 # 1e3
+  loss_ftn: l1
+  val_freq: !!float 2.5e3
 
   manual_seed: 0
 
 #### logger
 logger:
   print_freq: 200
-  save_checkpoint_freq: !!float 2500 #5e3
+  save_checkpoint_freq: !!float 2.5e3

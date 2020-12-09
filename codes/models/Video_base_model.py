@@ -32,41 +32,25 @@ class VideoBaseModel(BaseModel):
         # print network
         # self.print_network()
         self.load()
-        '''
-        # Freeze front when indicated
-        if opt['train']['freeze_front']:
-            print('Freeze the front part of the model')
-            if opt['network_G']['which_model_G'] == 'EDVR':
-                for name, child in self.netG.module.named_children():
-                    if name not in ('tsa_fusion', 'recon_trunk', 'upconv1', 'upconv2', 'HRconv', 'conv_last'):
-                        for params in child.parameters():
-                            params.requires_grad = False
-                
-                elif opt['network_G']['which_model_G'] == 'DUF':
-                    for name, child in self.netG.module.named_children():
-                        if name in ('conv3d_1', 'dense_block_1', 'dense_block_2', 'dense_block_3'):
-                            for params in child.parameters():
-                                params.requires_grad = False
-                
-            else:
-                raise NotImplementedError()
-        '''
+        
+        self.log_dict = OrderedDict()
+
+        #### loss
+        loss_type = train_opt['pixel_criterion']
+        if loss_type == 'l1':
+            self.cri_pix = nn.L1Loss(reduction='mean').to(self.device)  # Change from sum to mean
+        elif loss_type == 'l2':
+            self.cri_pix = nn.MSELoss(reduction='mean').to(self.device)  # Change from sum to mean
+        elif loss_type == 'cb':
+            self.cri_pix = CharbonnierLoss().to(self.device)
+        elif loss_type == 'huber':
+            self.cri_pix = HuberLoss().to(self.device)
+        else:
+            raise NotImplementedError('Loss type [{:s}] is not recognized.'.format(loss_type))
+        self.l_pix_w = train_opt['pixel_weight']
+
         if self.is_train:
             self.netG.train()
-
-            #### loss
-            loss_type = train_opt['pixel_criterion']
-            if loss_type == 'l1':
-                self.cri_pix = nn.L1Loss(reduction='mean').to(self.device)  # Change from sum to mean
-            elif loss_type == 'l2':
-                self.cri_pix = nn.MSELoss(reduction='mean').to(self.device)  # Change from sum to mean
-            elif loss_type == 'cb':
-                self.cri_pix = CharbonnierLoss().to(self.device)
-            elif loss_type == 'huber':
-                self.cri_pix = HuberLoss().to(self.device)
-            else:
-                raise NotImplementedError('Loss type [{:s}] is not recognized.'.format(loss_type))
-            self.l_pix_w = train_opt['pixel_weight']
 
             #### optimizers
             wd_G = train_opt['weight_decay_G'] if train_opt['weight_decay_G'] else 0
@@ -169,7 +153,6 @@ class VideoBaseModel(BaseModel):
             else:
                 raise NotImplementedError()
 
-            self.log_dict = OrderedDict()
 
     def feed_data(self, data, need_GT=True):
         self.var_L = data['LQs'].to(self.device)

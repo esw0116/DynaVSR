@@ -53,24 +53,23 @@ network_G:
   layers: 16
 
 network_E:
-  which_model_E: video_baseline
+  which_model_E: MFDN
   mode: video
   nf: 64
   in_nc: 3
 
 #### path
 path:
-  bicubic_G: ../experiments/pretrained_models/DUF_16L_Vimeo_S2.pth
-  fixed_E: ../experiments/pretrained_models/LRestimator_V_vid_fin.pth
-  pretrain_model_G: ../experiments/pretrained_models/ACCV/DUF/Vid4_G.pth
-  pretrain_model_E: ../experiments/pretrained_models/ACCV/DUF/Vid4_E.pth
+  bicubic_G: ../pretrained_models/BaselineVSR/DUF_16L_Vimeo_S2.pth
+  fixed_E: ../pretrained_models/MFDN/MFDN_Vimeo.pth
+  pretrain_model_G: ../pretrained_models/DUF/Vid4_G.pth
+  pretrain_model_E: ../pretrained_models/DUF/Vid4_E.pth
   strict_load: true
   resume_state: ~
   img_save_path: ../results
 
 #### training settings: learning rate scheme, loss
 train:
-  lr_C: !!float 1e-4 # Not Used
   lr_G: !!float 1e-5
   lr_scheme: MultiStepLR
   optim: Adam

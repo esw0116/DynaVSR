@@ -65,8 +65,8 @@ network_E:
 
 #### path
 path:
-  pretrain_model_G: ../experiments/pretrained_models/EDVR_M_BLIND_R_FT_fin.pth
-  pretrain_model_E: ../experiments/pretrained_models/LRestimator_R_img_fin.pth
+  pretrain_model_G: ../pretrained_models/BaselineVSR/EDVR_M_REDS_S2.pth
+  pretrain_model_E: ../pretrained_models/MFDN/SFDN_REDS.pth
   strict_load: true
   resume_state: ~
   img_save_path: ../results

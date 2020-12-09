@@ -33,7 +33,7 @@ datasets:
 
   val:
     name: Vid4
-    mode: video_test #benchmark #video_test
+    mode: benchmark
     dataroot_GT: ../dataset/Vid4/HR
     dataroot_LQ: ../dataset/Vid4/LR_bicubic
     cache_data: True
@@ -60,7 +60,7 @@ network_G:
   w_TSA: true
 
 network_E:
-  which_model_E: video_baseline
+  which_model_E: MFDN
   mode: video
   nf: 64
   in_nc: 3
@@ -68,17 +68,16 @@ network_E:
 
 #### path
 path:
-  bicubic_G: ../experiments/pretrained_models/EDVR_Vimeo90K_SR_M_Scale2_FT.pth
-  fixed_E: ../experiments/pretrained_models/LRestimator_V_vid_fin.pth #LRestimator_V_vid_fin.pth
-  pretrain_model_G: ../experiments/pretrained_models/ACCV/EDVR/Vid4_G.pth # SLR1_EDVR_V_55/models/3000_G.pth #pretrained_models/ACCV/EDVR/Vid4_G.pth
-  pretrain_model_E: ../experiments/pretrained_models/ACCV/EDVR/Vid4_E.pth # SLR1_EDVR_V_55/models/3000_E.pth #pretrained_models/ACCV/EDVR/Vid4_E.pth
+  bicubic_G: ../pretrained_models/BaselineVSR/EDVR_M_Vimeo_S2.pth
+  fixed_E: ../pretrained_models/MFDN/MFDN_Vimeo.pth
+  pretrain_model_G: ../pretrained_models/EDVR/Vid4_G.pth
+  pretrain_model_E: ../pretrained_models/EDVR/Vid4_E.pth
   strict_load: true
   resume_state: ~
   img_save_path: ../results
 
 #### training settings: learning rate scheme, loss
 train:
-  lr_C: !!float 1e-4 # Not Used
   lr_G: !!float 1e-5
   lr_scheme: MultiStepLR
   optim: Adam

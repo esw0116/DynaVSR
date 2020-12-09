@@ -12,7 +12,7 @@ import torch
 import torch.distributed as dist
 import torch.multiprocessing as mp
 from torch.nn import functional as F
-from data.Backup.data_sampler import DistIterSampler
+from data.data_sampler import DistIterSampler
 
 import options.options as option
 from utils import util
@@ -231,7 +231,6 @@ def main():
 
         HR_ = HR[0]
         for _ in range(num_patches_for_batch):
-            #patch_lr, patch_hr, _ = preprocessing.crop(LR_seq_, img_gt=HR_, patch_size=patch_size)
             patch_lr, patch_hr = preprocessing.common_crop(LR_seq_, HR_, patch_size=patch_size // 2)
             cropped_lr.append(patch_lr)
             cropped_hr.append(patch_hr)

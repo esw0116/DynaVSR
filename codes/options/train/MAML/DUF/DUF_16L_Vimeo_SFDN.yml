@@ -1,5 +1,5 @@
 #### general settings
-name: R_R4_EDVR_LRV
+name: V_V4_DUF_16L_img_Joint
 use_tb_logger: true
 model: video_base+lrimgestimator
 distortion: sr
@@ -10,7 +10,7 @@ gpu_ids: [0]
 #### datasets
 datasets:
   train:
-    name: REDS
+    name: Vimeo
     mode: video_test
     interval_list: [1]
     random_reverse: false
@@ -20,91 +20,78 @@ datasets:
     padding: new_info
     img_type: img
 
-    N_frames: 5
+    N_frames: 7
     use_shuffle: true
     n_workers: 3  # per GPU
     batch_size: 4
-    patch_size: 128
     kernel_size: 21
     use_flip: true
-    use_rot: false
+    use_rot: true
     color: RGB
 
 
   val:
-    name: REDS+REDS+REDS
+    name: Vid4
     mode: benchmark
-    dataroot_GT: ../dataset/REDS/train/HR+../dataset/REDS/train/HR+../dataset/REDS/train/HR
-    dataroot_LQ: ../dataset/REDS/train/LR+../dataset/REDS/train/LR+../dataset/REDS/train/LR #_bicubic
+    dataroot_GT: ../dataset/Vid4/HR
+    dataroot_LQ: ../dataset/Vid4/LR
     cache_data: True
-    N_frames: 5
-    #patch_size: 56
+    N_frames: 7
     padding: new_info
-  
-    degradation_mode: set
-    degradation_type: bicubic+bicubic+bicubic
-    sigma_x: 0.8+1.2+1.6
-    sigma_y: 0.8+1.2+1.6 #[0.8, 1.2, 1.6]
-    theta: 0.0+0.0+0.0 #[0.0, 0.0, 0.0]
 
+    degradation_mode: preset
+    degradation_type: bicubic
+    sigma_x: 0.8
+    sigma_y: 0.8
+    theta: 0
 
 #### network structures
 network_G:
-  which_model_G: EDVR
-  nf: 64
-  nframes: 5
-  groups: 8
-  front_RBs: 5
-  back_RBs: 10
-  predeblur: false
-  HR_in: false
-  w_TSA: true
+  which_model_G: DUF
+  layers: 16
 
 network_E:
-  which_model_E: video_baseline
-  mode: video
+  which_model_E: SFDN
+  mode: image
   nf: 64
-  in_nc: 3
-
 
 #### path
 path:
-  pretrain_model_G: ../experiments/pretrained_models/EDVR_REDS_SR_M_Scale2_FT.pth #EDVR_M_BLIND_R_FT_report.pth
-  pretrain_model_E: ../experiments/pretrained_models/LRestimator_R_vid_fin.pth
+  pretrain_model_G: ../pretrained_models/BaselineVSR/DUF_16L_Vimeo_S2.pth
+  pretrain_model_E: ../pretrained_models/MFDN/SFDN_Vimeo.pth
   strict_load: true
   resume_state: ~
   img_save_path: ../results
 
 #### training settings: learning rate scheme, loss
 train:
-  lr_C: !!float 1e-5 # Not Used
-  lr_G: !!float 1e-5
+  lr_C: !!float 1e-4 # Not Used
+  lr_G: !!float 1e-6
   lr_scheme: MultiStepLR
   optim: Adam
   beta1: 0.9
   beta2: 0.99
   epochs: 20
-  niter: 30000
+  niter: 50000
   warmup_iter: -1  # -1: no warm up
-  lr_steps: [20000, 25000]
+  lr_steps: [30000, 40000]
   lr_gamma: 0.2
   loss_ftn: l1  # Loss function for updating KE model
   use_real: false
 
   maml:
     use_patch: false
-    num_patch: 1
-    patch_size: 128
+    num_patch: 3
+    patch_size: 96
     optimizer: Adam
-    lr_alpha: !!float 1e-5
-    #lr_alpha_est: !!float 1e-6
+    lr_alpha: !!float 1e-4
     beta1: 0.9
     beta2: 0.99
     adapt_iter: 1
 
-  pixel_criterion: cb
+  pixel_criterion: huber
   pixel_weight: 1.0
-  val_freq: !!float 2e3
+  val_freq: !!float 500 #1e3
 
   manual_seed: 0
 

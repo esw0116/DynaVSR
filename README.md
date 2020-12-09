@@ -1,5 +1,5 @@
 # DynaVSR
-DynaVSR: Dynamic Adaptive Blind VideoSuper-Resolution
+## DynaVSR: Dynamic Adaptive Blind VideoSuper-Resolution [[Arxiv](http://arxiv.org/abs/2011.04482)]
 
 #### Suyoung Lee\*, Myungsub Choi\*, Kyoung Mu Lee
 
@@ -9,7 +9,8 @@ DynaVSR: Dynamic Adaptive Blind VideoSuper-Resolution
 ``` text
 project
 │   README.md
-└───dataset - make symbolic link here
+└───dataset - make symbolic link of your data here
+└───pretrained_models - put the downloadedpretrained model here
 └───codes
 │   └───data
 │       │   common.py
@@ -51,17 +52,12 @@ Current version is tested on:
 - numpy==1.17
 - [PyTorch](http://pytorch.org/)==1.3.1, torchvision==0.4.2, cudatoolkit==10.0
 - tensorboard==1.14.0
-- pywavelets==1.1.1
+- etc: pyyaml, opencv, scikit-image, pandas, imageio, tqdm
 
 ``` text
 # Easy installation (using Anaconda environment)
-conda create -n dynavsr
+conda env create -f environment.yml
 conda activate dynavsr
-conda install python=3.7
-conda install pip numpy
-conda install pytorch torchvision cudatoolkit=10.0 -c pytorch
-pip install tensorboard==1.14
-pip install pywavelets
 ```
 
 ## Model
@@ -77,6 +73,9 @@ pip install pywavelets
   - `sh codes/run_downscaling.sh`
 - make symbolic link to the datasets.
 
+## Downloading Pretrained Models
+- You can download pretrained models using the link: [[Google Drive](https://drive.google.com/drive/folders/1zkeCbsS6Eb6e8IZqb34lxa6gNlZLKGNv?usp=sharing)]
+
 
 ## Usage
 
@@ -85,7 +84,7 @@ pip install pywavelets
   cd ./codes/models/archs/dcn
   python setup.py develop
   ```
-#### Training
+### Training
 Two ways to train DynaVSR network.
 - Distributed training(When using multiple GPUs).
   ```
@@ -98,11 +97,12 @@ Two ways to train DynaVSR network.
   python train_dynavsr.py -opt options/train/[Path to YML file] --exp_name [Experiment Name]
   ```
 
-#### Testing
+### Testing
+
 - We just support single GPU for testing.
   ```
   cd ./codes
-  python test_dynavsr.py -opt options/train/[Path to YML file]
+  python test_dynavsr.py -opt options/test/[Path to YML file]
   ```
 - Or just use `run_visual.sh`
   ```

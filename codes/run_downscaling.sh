@@ -1,6 +1,6 @@
 # set degradation_mode (impulse or bicubic)
 export CUDA_VISIBLE_DEVICES=1
-DATA="REDS"
+DATA="REDS" # Vid4
 MY_MODEL='MFDN'
 
 #python make_slr_images.py -m ${DATA} --model ${MY_MODEL} --degradation_mode preset

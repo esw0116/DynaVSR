@@ -3,9 +3,6 @@
 
 #### Suyoung Lee\*, Myungsub Choi\*, Kyoung Mu Lee
 
-### Now renovating this repository, it will be completed before 12/10
-### Sorry for the inconvenience
-
 ## Directory Structure
 
 ``` text
@@ -114,6 +111,10 @@ Two ways to train DynaVSR network.
 ## Results
 
 <center><img src="./figures/dynavsr_qualitative1.png" width="100%"></center>
+
+
+## Update Log
+- [2020-12-09] First code cleanup, Publish pretrained models
 
 ## Acknowledgement
 

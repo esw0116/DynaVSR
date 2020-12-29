@@ -98,12 +98,16 @@ Two ways to train DynaVSR network.
 
 ### Testing
 
-- We just support single GPU for testing.
+- We just support single GPU for testing. 
+  - To use your own test set, change the dataroot in `EDVR_Demo.yml` file to the folder containing images.
+
   ```
   cd ./codes
   python test_dynavsr.py -opt options/test/[Path to YML file]
   ```
-- Or just use `run_visual.sh`
+
+
+- Or just use [`run_visual.sh`](https://github.com/esw0116/DynaVSR/blob/master/codes/run_visual.sh) (Uncomment line that you want to execute).
   ```
   sh ./codes/run_visual.sh
   ```
@@ -112,9 +116,11 @@ Two ways to train DynaVSR network.
 
 <center><img src="./figures/dynavsr_qualitative1.png" width="100%"></center>
 
+<br>
 
 ## Update Log
 - [2020-12-09] First code cleanup, Publish pretrained models
+- [2020-12-29] Add arbitrary input data testing script
 
 ## Acknowledgement
 

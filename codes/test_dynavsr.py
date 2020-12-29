@@ -64,16 +64,17 @@ def main():
         opt['datasets']['val']['sigma_y'] = args.sigma_y
     if args.theta is not None:
         opt['datasets']['val']['theta'] = args.theta
-    if opt['datasets']['val']['degradation_mode'] == 'set':
-        degradation_name = str(opt['datasets']['val']['degradation_type'])\
+    
+    if 'degradation_mode' not in opt['datasets']['val'].keys():
+        degradation_name = ''
+    elif opt['datasets']['val']['degradation_mode'] == 'set':
+        degradation_name = '_' + str(opt['datasets']['val']['degradation_type'])\
                   + '_' + str(opt['datasets']['val']['sigma_x']) \
                   + '_' + str(opt['datasets']['val']['sigma_y'])\
                   + '_' + str(opt['datasets']['val']['theta'])
     else:
-        degradation_name = opt['datasets']['val']['degradation_mode']
-    patch_name = 'p{}x{}'.format(opt['train']['maml']['patch_size'], opt['train']['maml']['num_patch']) if opt['train']['maml']['use_patch'] else 'full'
-    use_real_flag = '_ideal' if opt['train']['use_real'] else ''
-    folder_name = opt['name'] + '_' + degradation_name # + '_' + inner_loop_name + meta_loop_name + '_' + degradation_name + '_' + patch_name + use_real_flag
+        degradation_name = '_' + opt['datasets']['val']['degradation_mode']
+    folder_name = opt['name'] + '_' + degradation_name
 
     if args.exp_name != 'temp':
         folder_name = args.exp_name
@@ -88,22 +89,15 @@ def main():
             pass
         elif phase == 'val':
             if '+' in opt['datasets']['val']['name']:
-                val_set, val_loader = [], []
-                valname_list = opt['datasets']['val']['name'].split('+')
-                for i in range(len(valname_list)):
-                    val_set.append(create_dataset(dataset_opt, scale=opt['scale'],
-                                                  kernel_size=opt['datasets']['train']['kernel_size'],
-                                                  model_name=opt['network_E']['which_model_E'], idx=i))
-                    val_loader.append(create_dataloader(val_set[-1], dataset_opt, opt, None))
+                raise NotImplementedError('Do not use + signs in test mode')
             else:
                 val_set = create_dataset(dataset_opt, scale=opt['scale'],
                                          kernel_size=opt['datasets']['train']['kernel_size'],
                                          model_name=opt['network_E']['which_model_E'])
                 # val_set = loader.get_dataset(opt, train=False)
                 val_loader = create_dataloader(val_set, dataset_opt, opt, None)
-            if True: #rank <= 0:
-                # logger.info('Number of val images in [{:s}]: {:d}'.format(dataset_opt['name'], len(val_set)))
-                print('Number of val images in [{:s}]: {:d}'.format(dataset_opt['name'], len(val_set)))
+
+            print('Number of val images in [{:s}]: {:d}'.format(dataset_opt['name'], len(val_set)))
         else:
             raise NotImplementedError('Phase [{:s}] is not recognized.'.format(phase))
 
@@ -117,6 +111,7 @@ def main():
     center_idx = (opt['datasets']['val']['N_frames']) // 2
     lr_alpha = opt['train']['maml']['lr_alpha']
     update_step = opt['train']['maml']['adapt_iter']
+    with_GT = False if opt['datasets']['val']['mode'] == 'demo' else True
 
     pd_log = pd.DataFrame(columns=['PSNR_Bicubic', 'PSNR_Ours', 'SSIM_Bicubic', 'SSIM_Ours'])
 
@@ -154,6 +149,7 @@ def main():
     psnr_rlt = [{}, {}]
     # SSIM_rlt: ssim_init, ssim_after
     ssim_rlt = [{}, {}]
+
     pbar = util.ProgressBar(len(val_set))
     for val_data in val_loader:
         folder = val_data['folder'][0]
@@ -164,17 +160,10 @@ def main():
             name = folder
 
         train_folder = os.path.join('../test_results', folder_name, name)
-
-        hr_train_folder = os.path.join(train_folder, 'hr')
-        bic_train_folder = os.path.join(train_folder, 'bic')
-        maml_train_folder = os.path.join(train_folder, 'maml')
+        maml_train_folder = os.path.join(train_folder, 'DynaVSR')
 
         if not os.path.exists(train_folder):
             os.makedirs(train_folder, exist_ok=False)
-        if not os.path.exists(hr_train_folder):
-            os.mkdir(hr_train_folder)
-        if not os.path.exists(bic_train_folder):
-            os.mkdir(bic_train_folder)
         if not os.path.exists(maml_train_folder):
             os.mkdir(maml_train_folder)
 
@@ -185,10 +174,6 @@ def main():
             if ssim_rlt[i].get(folder, None) is None:
                 ssim_rlt[i][folder] = []
         
-        if idx_d % 10 != 5:
-            #continue
-            pass
-
         cropped_meta_train_data = {}
         meta_train_data = {}
         meta_test_data = {}
@@ -196,9 +181,9 @@ def main():
         # Make SuperLR seq using estimation model
         meta_train_data['GT'] = val_data['LQs'][:, center_idx]
         meta_test_data['LQs'] = val_data['LQs'][0:1]
-        meta_test_data['GT'] = val_data['GT'][0:1, center_idx]
+        meta_test_data['GT'] = val_data['GT'][0:1, center_idx] if with_GT else None
         # Check whether the batch size of each validation data is 1
-        assert val_data['SuperLQs'].size(0) == 1
+        assert val_data['LQs'].size(0) == 1
 
         if opt['network_G']['which_model_G'] == 'TOF':
             LQs = meta_test_data['LQs']
@@ -207,17 +192,18 @@ def main():
             Bic_LQs = F.interpolate(LQs, scale_factor=opt['scale'], mode='bicubic', align_corners=True)
             meta_test_data['LQs'] = Bic_LQs.reshape(B, T, C, H*opt['scale'], W*opt['scale'])
         
-        ## Before start training, first save the bicubic, real outputs
-        # Bicubic
+        ## Before start testing
+        # Bicubic Model Results
         modelcp.load_network(opt['path']['bicubic_G'], modelcp.netG)
-        modelcp.feed_data(meta_test_data)
+        modelcp.feed_data(meta_test_data, need_GT=with_GT)
         modelcp.test()
-        model_start_visuals = modelcp.get_current_visuals(need_GT=True)
-        hr_image = util.tensor2img(model_start_visuals['GT'], mode='rgb')
-        start_image = util.tensor2img(model_start_visuals['rlt'], mode='rgb')
 
-        psnr_rlt[0][folder].append(util.calculate_psnr(start_image, hr_image))
-        ssim_rlt[0][folder].append(util.calculate_ssim(start_image, hr_image))
+        if with_GT:
+            model_start_visuals = modelcp.get_current_visuals(need_GT=True)
+            hr_image = util.tensor2img(model_start_visuals['GT'], mode='rgb')
+            start_image = util.tensor2img(model_start_visuals['rlt'], mode='rgb')
+            psnr_rlt[0][folder].append(util.calculate_psnr(start_image, hr_image))
+            ssim_rlt[0][folder].append(util.calculate_ssim(start_image, hr_image))
 
         modelcp.netG, est_modelcp.netE = deepcopy(model.netG), deepcopy(est_model.netE)
 
@@ -293,83 +279,88 @@ def main():
         et = time.time()
         update_time = et - st
 
-        modelcp.feed_data(meta_test_data)
+        modelcp.feed_data(meta_test_data, need_GT=with_GT)
         modelcp.test()
 
         model_update_visuals = modelcp.get_current_visuals(need_GT=False)
         update_image = util.tensor2img(model_update_visuals['rlt'], mode='rgb')
         # Save and calculate final image
         imageio.imwrite(os.path.join(maml_train_folder, '{:08d}.png'.format(idx_d)), update_image)
-        psnr_rlt[1][folder].append(util.calculate_psnr(update_image, hr_image))
-        ssim_rlt[1][folder].append(util.calculate_ssim(update_image, hr_image))
 
-        name_df = '{}/{:08d}'.format(folder, idx_d)
-        if name_df in pd_log.index:
-            pd_log.at[name_df, 'PSNR_Bicubic'] = psnr_rlt[0][folder][-1]
-            pd_log.at[name_df, 'PSNR_Ours'] = psnr_rlt[1][folder][-1]
-            pd_log.at[name_df, 'SSIM_Bicubic'] = ssim_rlt[0][folder][-1]
-            pd_log.at[name_df, 'SSIM_Ours'] = ssim_rlt[1][folder][-1]
+        if with_GT:
+            psnr_rlt[1][folder].append(util.calculate_psnr(update_image, hr_image))
+            ssim_rlt[1][folder].append(util.calculate_ssim(update_image, hr_image))
+
+            name_df = '{}/{:08d}'.format(folder, idx_d)
+            if name_df in pd_log.index:
+                pd_log.at[name_df, 'PSNR_Bicubic'] = psnr_rlt[0][folder][-1]
+                pd_log.at[name_df, 'PSNR_Ours'] = psnr_rlt[1][folder][-1]
+                pd_log.at[name_df, 'SSIM_Bicubic'] = ssim_rlt[0][folder][-1]
+                pd_log.at[name_df, 'SSIM_Ours'] = ssim_rlt[1][folder][-1]
+            else:
+                pd_log.loc[name_df] = [psnr_rlt[0][folder][-1],
+                                    psnr_rlt[1][folder][-1],
+                                    ssim_rlt[0][folder][-1], ssim_rlt[1][folder][-1]]
+
+            pd_log.to_csv(os.path.join('../test_results', folder_name, 'psnr_update.csv'))
+
+            pbar.update('Test {} - {}: I: {:.3f}/{:.4f} \tF+: {:.3f}/{:.4f} \tTime: {:.3f}s'
+                            .format(folder, idx_d,
+                                    psnr_rlt[0][folder][-1], ssim_rlt[0][folder][-1],
+                                    psnr_rlt[1][folder][-1], ssim_rlt[1][folder][-1],
+                                    update_time
+                                    ))
         else:
-            pd_log.loc[name_df] = [psnr_rlt[0][folder][-1],
-                                psnr_rlt[1][folder][-1],
-                                ssim_rlt[0][folder][-1], ssim_rlt[1][folder][-1]]
+            pbar.update()
 
-        pd_log.to_csv(os.path.join('../test_results', folder_name, 'psnr_update.csv'))
+    if with_GT:
+        psnr_rlt_avg = {}
+        psnr_total_avg = 0.
+        # Just calculate the final value of psnr_rlt(i.e. psnr_rlt[2])
+        for k, v in psnr_rlt[0].items():
+            psnr_rlt_avg[k] = sum(v) / len(v)
+            psnr_total_avg += psnr_rlt_avg[k]
+        psnr_total_avg /= len(psnr_rlt[0])
+        log_s = '# Validation # Bic PSNR: {:.4e}:'.format(psnr_total_avg)
+        for k, v in psnr_rlt_avg.items():
+            log_s += ' {}: {:.4e}'.format(k, v)
+        print(log_s)
 
-        pbar.update('Test {} - {}: I: {:.3f}/{:.4f} \tF+: {:.3f}/{:.4f} \tTime: {:.3f}s'
-                        .format(folder, idx_d,
-                                psnr_rlt[0][folder][-1], ssim_rlt[0][folder][-1],
-                                psnr_rlt[1][folder][-1], ssim_rlt[1][folder][-1],
-                                update_time
-                                ))
+        psnr_rlt_avg = {}
+        psnr_total_avg = 0.
+        # Just calculate the final value of psnr_rlt(i.e. psnr_rlt[2])
+        for k, v in psnr_rlt[1].items():
+            psnr_rlt_avg[k] = sum(v) / len(v)
+            psnr_total_avg += psnr_rlt_avg[k]
+        psnr_total_avg /= len(psnr_rlt[1])
+        log_s = '# Validation # PSNR: {:.4e}:'.format(psnr_total_avg)
+        for k, v in psnr_rlt_avg.items():
+            log_s += ' {}: {:.4e}'.format(k, v)
+        print(log_s)
 
-    psnr_rlt_avg = {}
-    psnr_total_avg = 0.
-    # Just calculate the final value of psnr_rlt(i.e. psnr_rlt[2])
-    for k, v in psnr_rlt[0].items():
-        psnr_rlt_avg[k] = sum(v) / len(v)
-        psnr_total_avg += psnr_rlt_avg[k]
-    psnr_total_avg /= len(psnr_rlt[0])
-    log_s = '# Validation # Bic PSNR: {:.4e}:'.format(psnr_total_avg)
-    for k, v in psnr_rlt_avg.items():
-        log_s += ' {}: {:.4e}'.format(k, v)
-    print(log_s)
+        ssim_rlt_avg = {}
+        ssim_total_avg = 0.
+        # Just calculate the final value of ssim_rlt(i.e. ssim_rlt[1])
+        for k, v in ssim_rlt[0].items():
+            ssim_rlt_avg[k] = sum(v) / len(v)
+            ssim_total_avg += ssim_rlt_avg[k]
+        ssim_total_avg /= len(ssim_rlt[0])
+        log_s = '# Validation # Bicubic SSIM: {:.4e}:'.format(ssim_total_avg)
+        for k, v in ssim_rlt_avg.items():
+            log_s += ' {}: {:.4e}'.format(k, v)
+        print(log_s)
 
-    psnr_rlt_avg = {}
-    psnr_total_avg = 0.
-    # Just calculate the final value of psnr_rlt(i.e. psnr_rlt[2])
-    for k, v in psnr_rlt[1].items():
-        psnr_rlt_avg[k] = sum(v) / len(v)
-        psnr_total_avg += psnr_rlt_avg[k]
-    psnr_total_avg /= len(psnr_rlt[1])
-    log_s = '# Validation # PSNR: {:.4e}:'.format(psnr_total_avg)
-    for k, v in psnr_rlt_avg.items():
-        log_s += ' {}: {:.4e}'.format(k, v)
-    print(log_s)
-
-    ssim_rlt_avg = {}
-    ssim_total_avg = 0.
-    # Just calculate the final value of ssim_rlt(i.e. ssim_rlt[1])
-    for k, v in ssim_rlt[0].items():
-        ssim_rlt_avg[k] = sum(v) / len(v)
-        ssim_total_avg += ssim_rlt_avg[k]
-    ssim_total_avg /= len(ssim_rlt[0])
-    log_s = '# Validation # Bicubic SSIM: {:.4e}:'.format(ssim_total_avg)
-    for k, v in ssim_rlt_avg.items():
-        log_s += ' {}: {:.4e}'.format(k, v)
-    print(log_s)
-
-    ssim_rlt_avg = {}
-    ssim_total_avg = 0.
-    # Just calculate the final value of ssim_rlt(i.e. ssim_rlt[1])
-    for k, v in ssim_rlt[1].items():
-        ssim_rlt_avg[k] = sum(v) / len(v)
-        ssim_total_avg += ssim_rlt_avg[k]
-    ssim_total_avg /= len(ssim_rlt[1])
-    log_s = '# Validation # SSIM: {:.4e}:'.format(ssim_total_avg)
-    for k, v in ssim_rlt_avg.items():
-        log_s += ' {}: {:.4e}'.format(k, v)
-    print(log_s)
+        ssim_rlt_avg = {}
+        ssim_total_avg = 0.
+        # Just calculate the final value of ssim_rlt(i.e. ssim_rlt[1])
+        for k, v in ssim_rlt[1].items():
+            ssim_rlt_avg[k] = sum(v) / len(v)
+            ssim_total_avg += ssim_rlt_avg[k]
+        ssim_total_avg /= len(ssim_rlt[1])
+        log_s = '# Validation # SSIM: {:.4e}:'.format(ssim_total_avg)
+        for k, v in ssim_rlt_avg.items():
+            log_s += ' {}: {:.4e}'.format(k, v)
+        print(log_s)
 
     print('End of evaluation.')
 

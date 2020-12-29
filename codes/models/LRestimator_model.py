@@ -112,7 +112,7 @@ class LRimgestimator_Model(BaseModel):
 
     def feed_data(self, data):
         self.real_H = data['LQs'].to(self.device)
-        self.real_L = data['SuperLQs'].to(self.device)
+        self.real_L = None if 'SuperLQs' not in data.keys() else data['SuperLQs'].to(self.device)
         B, T, C, H, W = self.real_H.shape
         if self.mode == 'image':
             self.var_H = self.real_H.reshape(B*T, C, H, W)

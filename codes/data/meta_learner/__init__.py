@@ -41,8 +41,8 @@ def create_dataset(dataset_opt, **kwargs):
         from data.meta_learner.video_test_dataset import VideoTestDataset as D
     elif mode == 'benchmark':
         from data.meta_learner.video_test_dataset_int import VideoTestDataset as D
-    elif mode == 'youtube':
-        from data.meta_learner.youtube8 import YouTube8 as D
+    elif mode == 'demo':
+        from data.meta_learner.demo import Demo as D
     else:
         raise NotImplementedError('Dataset [{:s}] is not recognized.'.format(mode))
     dataset = D(dataset_opt, **kwargs)

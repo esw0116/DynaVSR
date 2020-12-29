@@ -99,7 +99,7 @@ Two ways to train DynaVSR network.
 ### Testing
 
 - We just support single GPU for testing. 
-  - To use your own test set, change the dataroot in `EDVR_Demo.yml` file to the folder containing images.
+  - To use your own test set, change the dataroot in [`EDVR_Demo.yml`](https://github.com/esw0116/DynaVSR/blob/master/codes/options/test/EDVR/EDVR_Demo.yml#L37) file to the folder containing images.
 
   ```
   cd ./codes

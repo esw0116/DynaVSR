@@ -1,6 +1,6 @@
 #### general settings
 name: EDVR_Demo
-use_tb_logger: true
+use_tb_logger: false
 model: video_base+lrimgestimator
 distortion: sr
 scale: 2
@@ -34,7 +34,7 @@ datasets:
   val:
    name: Demo
    mode: demo
-   dataroot: ../dataset/YouTube8/360/004  # Edit the dataroot here.
+   dataroot: ../PATH/TO/YOUR/FOLDER  # Edit the dataroot here.
    cache_data: True
    N_frames: 5
    padding: new_info

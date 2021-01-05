@@ -1,6 +1,6 @@
 #### general settings
-name: V_V4_TOF_vid_imp_1.2
-use_tb_logger: true
+name: V_V4_TOF_MFDN
+use_tb_logger: false
 model: video_base+lrimgestimator
 distortion: sr
 scale: 2

@@ -182,11 +182,11 @@ class VideoTestDataset(data.Dataset):
                 else:
                     self.imgs_LQ[subfolder_name] = util.read_img_seq(img_paths_LQ, img_type)
                     self.imgs_SLQ[subfolder_name] = util.read_img_seq(img_paths_SLQ, img_type)
-                    h, w = self.imgs_SLQ[subfolder_name].shape[-2:]
-                    if h % 4 != 0 or w % 4 != 0:
-                        self.imgs_SLQ[subfolder_name] = self.imgs_SLQ[subfolder_name][..., :h - (h%4), :w - (w%4)]
-                        self.imgs_LQ[subfolder_name] = self.imgs_LQ[subfolder_name][..., :self.scale*(h - (h%4)), :self.scale*(w - (w%4))]
-                        self.imgs_GT[subfolder_name] = self.imgs_GT[subfolder_name][..., :self.scale*self.scale*(h - (h%4)), :self.scale*self.scale*(w - (w%4))]
+                h, w = self.imgs_SLQ[subfolder_name].shape[-2:]
+                if h % 4 != 0 or w % 4 != 0:
+                    self.imgs_SLQ[subfolder_name] = self.imgs_SLQ[subfolder_name][..., :h - (h%4), :w - (w%4)]
+                    self.imgs_LQ[subfolder_name] = self.imgs_LQ[subfolder_name][..., :self.scale*(h - (h%4)), :self.scale*(w - (w%4))]
+                    self.imgs_GT[subfolder_name] = self.imgs_GT[subfolder_name][..., :self.scale*self.scale*(h - (h%4)), :self.scale*self.scale*(w - (w%4))]
 
         else:
             raise ValueError(

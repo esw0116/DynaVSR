@@ -1,16 +1,16 @@
 #### general settings
-name: V_V4_EDVR_MFDN
+name: V_V4_EDVR_MFDN_Scale4
 use_tb_logger: false
 model: video_base+lrimgestimator
 distortion: sr
-scale: 2
+scale: 4
 cpu: false
 gpu_ids: [0]
 
 #### datasets
 datasets:
   train:
-    name: Vimeo
+    name: REDS
     mode: video_test
     interval_list: [1]
     random_reverse: false
@@ -20,10 +20,10 @@ datasets:
     padding: new_info
     img_type: img
 
-    N_frames: 5
+    N_frames: 7
     use_shuffle: true
     n_workers: 3  # per GPU
-    batch_size: 4
+    batch_size: 2
     patch_size: 128
     kernel_size: 21
     use_flip: true
@@ -37,24 +37,25 @@ datasets:
     dataroot_GT: ../dataset/Vid4/HR
     dataroot_LQ: ../dataset/Vid4/LR
     cache_data: True
-    N_frames: 5
+    N_frames: 7
     #patch_size: 56
     padding: new_info
-
+  
     degradation_mode: set
     degradation_type: bicubic
     sigma_x: 1.6
     sigma_y: 1.6
-    theta: 0
+    theta: 0.0
+
 
 #### network structures
 network_G:
   which_model_G: EDVR
-  nf: 64
-  nframes: 5
+  nf: 128
+  nframes: 7
   groups: 8
   front_RBs: 5
-  back_RBs: 10
+  back_RBs: 40
   predeblur: false
   HR_in: false
   w_TSA: true
@@ -68,28 +69,29 @@ network_E:
 
 #### path
 path:
-  bicubic_G: ../pretrained_models/BaselineVSR/EDVR_M_Vimeo_S2.pth
-  fixed_E: ../pretrained_models/MFDN/MFDN_Vimeo.pth
-  pretrain_model_G: ../pretrained_models/EDVR/Vid4_G.pth
-  pretrain_model_E: ../pretrained_models/EDVR/Vid4_E.pth
+  bicubic_G: ../pretrained_models/BaselineVSR/EDVR_L_Vimeo_S4.pth
+  fixed_E: ../pretrained_models/MFDN/MFDN_Vimeo_S4.pth
+  pretrain_model_G: ../pretrained_models/EDVR/Vid4_G_S4.pth
+  pretrain_model_E: ../pretrained_models/EDVR/Vid4_E_S4.pth
   strict_load: true
   resume_state: ~
   img_save_path: ../results
 
 #### training settings: learning rate scheme, loss
 train:
+  lr_C: !!float 1e-4 # Not Used
   lr_G: !!float 1e-5
   lr_scheme: MultiStepLR
   optim: Adam
   beta1: 0.9
   beta2: 0.99
   epochs: 20
-  niter: 30000
+  niter: 80000
   warmup_iter: -1  # -1: no warm up
-  lr_steps: [10000, 20000]
+  lr_steps: [40000, 60000]
   lr_gamma: 0.2
   loss_ftn: l1  # Loss function for updating KE model
-  use_real: false
+  use_real: False
 
   maml:
     use_patch: false
@@ -103,11 +105,11 @@ train:
 
   pixel_criterion: cb
   pixel_weight: 1.0
-  val_freq: !!float 500
+  val_freq: !!float 1e3
 
   manual_seed: 0
 
 #### logger
 logger:
   print_freq: 100
-  save_checkpoint_freq: !!float 1000
+  save_checkpoint_freq: !!float 1e3

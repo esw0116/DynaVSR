@@ -1,5 +1,5 @@
 #### general settings
-name: R_R4_EDVR_LRV
+name: R_R4_EDVR_MFDN
 use_tb_logger: false
 model: video_base+lrimgestimator
 distortion: sr

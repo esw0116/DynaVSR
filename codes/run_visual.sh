@@ -1,14 +1,11 @@
 # set degradation_type (impulse or bicubic)
 export CUDA_VISIBLE_DEVICES=0
 MODEL="EDVR"
-DEG_TYPE="bicubic"
+DEG_TYPE="impulse"
 EXP_NAME="test"
 YML_NAME="EDVR_R.yml"
 
-# Gaussian8 evaluation
-
-# python test_dynavsr.py -opt options/test/${MODEL}/${YML_NAME} --exp_name ${EXP_NAME} --degradation_type preset
-
+# Isotropic Gaussianevaluation
 # python test_dynavsr.py -opt options/test/${MODEL}/${YML_NAME} --exp_name ${EXP_NAME} --degradation_type ${DEG_TYPE} --sigma_x 0.8 --sigma_y 0.8 --theta 0
 # python test_dynavsr.py -opt options/test/${MODEL}/${YML_NAME} --exp_name ${EXP_NAME} --degradation_type ${DEG_TYPE} --sigma_x 0.9 --sigma_y 0.9 --theta 0
 # python test_dynavsr.py -opt options/test/${MODEL}/${YML_NAME} --exp_name ${EXP_NAME} --degradation_type ${DEG_TYPE} --sigma_x 1.0 --sigma_y 1.0 --theta 0
@@ -28,6 +25,9 @@ YML_NAME="EDVR_R.yml"
 # python test_dynavsr.py -opt options/test/${MODEL}/${YML_NAME} --exp_name ${EXP_NAME} --degradation_type impulse --sigma_x 0.8 --sigma_y 1.6 --theta 45
 # python test_dynavsr.py -opt options/test/${MODEL}/${YML_NAME} --exp_name ${EXP_NAME} --degradation_type impulse --sigma_x 0.8 --sigma_y 1.6 --theta 90
 # python test_dynavsr.py -opt options/test/${MODEL}/${YML_NAME} --exp_name ${EXP_NAME} --degradation_type impulse --sigma_x 0.8 --sigma_y 1.6 --theta 135
+
+# Mixed Gaussain evaluation
+# python test_dynavsr.py -opt options/test/${MODEL}/${YML_NAME} --exp_name ${EXP_NAME} --degradation_type preset
 
 # Demo
 # python test_dynavsr.py -opt options/test/EDVR/EDVR_Demo.yml --exp_name Demo

@@ -1,7 +1,11 @@
 # DynaVSR
-## DynaVSR: Dynamic Adaptive Blind VideoSuper-Resolution [[Arxiv](http://arxiv.org/abs/2011.04482)]
-
+## DynaVSR: Dynamic Adaptive Blind VideoSuper-Resolution
 #### Suyoung Lee\*, Myungsub Choi\*, Kyoung Mu Lee
+#### Seoul National University
+
+This repository is the official implementation of DynaVSR, which is accepted in WACV2021.
+
+Link: [Paper(Arxiv)](http://arxiv.org/abs/2011.04482) | [Paper(CVFOpenAccess)](https://openaccess.thecvf.com/content/WACV2021/papers/Lee_DynaVSR_Dynamic_Adaptive_Blind_Video_Super-Resolution_WACV_2021_paper.pdf) 
 
 ## Directory Structure
 
@@ -121,10 +125,10 @@ Two ways to train DynaVSR network.
 ## Update Log
 - [2020-12-09] First code cleanup, Publish pretrained models
 - [2020-12-29] Add arbitrary input data testing script
+- [2021-01-05] Add script for testing 4X scale EDVR models
 
 ## Acknowledgement
 
 The code is built based on 
 
 - [EDVR-Pytorch](https://github.com/xinntao/EDVR)
-

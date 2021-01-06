@@ -24,23 +24,6 @@ def make_lr(img, kernel, scale):
 
     return lr_img
 
-def JSdistance(fake_args, real_args, eps=1e-8):
-    """
-    Calculate JS distance btw two bivariate Gaussian dists.
-    :param fake_args: estimated args list [sigma_x, sigma_y, theta] B X 3
-    :param real_args: gt args list B X 3
-    :return: JS distance B
-    """
-    vxf, vyf, vxr, vyr = fake_args[:, 0].pow(2), fake_args[:, 1].pow(2), real_args[:, 0].pow(2), real_args[:, 1].pow(2)
-    theta = fake_args[:, 2] - real_args[:, 2]
-    sin2_t = theta.sin().pow(2)
-    cos2_t = theta.cos().pow(2)
-    trace_eg = sin2_t * (vxf/(vyr+eps) + vyf/(vxr+eps)) + cos2_t * (vxf/(vxr+eps) + vyf/(vyr+eps))
-    trace_ge = sin2_t * (vxr/(vyf+eps) + vyr/(vxf+eps)) + cos2_t * (vxr/(vxf+eps) + vyr/(vyf+eps))
-
-    return 0.25 * (trace_eg + trace_ge)
-
-
 
 class LRimgestimator_Model(BaseModel):
     def name(self):

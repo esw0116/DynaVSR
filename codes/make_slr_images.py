@@ -9,7 +9,7 @@ import logging
 import numpy as np
 import torch
 import math
-import data.Backup.util as data_util
+import data.util as data_util
 import utils.util as util
 
 from models.archs import LRimg_estimator as LRest
@@ -30,6 +30,7 @@ def main():
     prog.add_argument('--sigma_x', '-sx', type=float, default=1, help='sigma_x')
     prog.add_argument('--sigma_y', '-sy', type=float, default=0, help='sigma_y')
     prog.add_argument('--theta', '-t', type=float, default=0, help='theta')
+    prog.add_argument('--scale', '-sc', type=int, default=2, choices=(2, 4), help='scale factor')
 
     args = prog.parse_args()
 
@@ -39,22 +40,26 @@ def main():
     if sig_y == 0:
         sig_y = sig_x
 
-    scale = 2
+    scale = args.scale
     kernel_size = 21
     N_in = 5
-    ############################################################################
 
     data_mode_l = data_modes.split('+')
 
     for i in range(len(data_mode_l)):
         data_mode = data_mode_l[i]
+
         #### dataset
         if data_mode == 'Vid4':
+            load_model = 'Vimeo'
             kernel_folder = '../experiments/pretrained_models/Vid4Gauss.npy'
             dataset_folder = '../dataset/Vid4'
-        else:
+        elif data_mode == 'REDS':
+            load_model = 'REDS'
             kernel_folder = '../experiments/pretrained_models/REDSGauss.npy'
             dataset_folder = '../dataset/REDS/train'
+        else:
+            raise NotImplementedError('Only Vid4 and REDS are supporteds')
         
         root_folder = osp.join(dataset_folder, 'LR_'+ degradation_mode + '_' + str('{:.1f}'.format(sig_x)) + '_' + str('{:.1f}'.format(sig_y)) + '_' + str('{:.1f}'.format(args.theta)))
         LR_dataset_folder = osp.join(root_folder, 'X'+str(scale))
@@ -75,11 +80,19 @@ def main():
         sig_x, sig_y, the = float(sig_x), float(sig_y), float(the)
 
         if args.model == 'SFDN':
-            model = LRest.DirectKernelEstimator_CMS(nf=64)
-            model.load_state_dict(torch.load('../experiments/pretrained_models/LRestimator_{}_img_fin.pth'.format(args.dataset_mode[0])), strict=True)
+            if scale == 2:
+                model = LRest.DirectKernelEstimator_CMS(nf=64)
+                model.load_state_dict(torch.load('../pretrained_models/MFDN/SFDN_{}.pth'.format(load_model)), strict=True)
+            else:
+                raise NotImplementedError('We do not support SFDN for scale factor 4 now.')
+
         else:
-            model = LRest.DirectKernelEstimatorVideo(in_nc=3, nf=64)
-            model.load_state_dict(torch.load('../experiments/pretrained_models/LRestimator_{}_vid_large.pth'.format(args.dataset_mode[0])), strict=True)
+            model = LRest.DirectKernelEstimatorVideo(in_nc=3, nf=64, scale=scale)
+            if scale == 2:
+                model.load_state_dict(torch.load('../pretrained_models/MFDN/MFDN_{}.pth'.format(load_model)), strict=True)
+            else:
+                model.load_state_dict(torch.load('../pretrained_models/MFDN/MFDN_{}_S4.pth'.format(load_model)), strict=True)
+
         model.eval()
         model = model.to(device)
 

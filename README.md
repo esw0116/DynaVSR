@@ -41,7 +41,7 @@ project
 |   train_mfdn.py - code for training MFDN, SFDN network
 |   test_maml.py - code for testing DynaVSR
 |   test_Vid4_REDS4_with_GT(_DUF, _TOF).py - code for testing baseline VSR network
-|   run_downscaling.sh - scripts for generating LR images
+|   run_downscaling.sh - scripts for generating LR, SLR images
 |   run_visual.sh - scripts for testing DynaVSR
 | ...
 ```
@@ -126,6 +126,7 @@ Two ways to train DynaVSR network.
 - [2020-12-09] First code cleanup, Publish pretrained models
 - [2020-12-29] Add arbitrary input data testing script
 - [2021-01-05] Add script for testing 4X scale EDVR models
+- [2021-01-06] Modify scripts for generating LR, SLR frames
 
 ## Acknowledgement
 

@@ -1,5 +1,5 @@
 export CUDA_VISIBLE_DEVICES=0
-DATA="REDS" # Vid4
+DATA="REDS" # Vid4, Vimeo
 MY_MODEL='MFDN'
 
 

@@ -63,16 +63,18 @@ def main():
         data_mode = data_mode_l[i]
         #### dataset
         if data_mode == 'Vid4':
-            kernel_folder = '../experiments/pretrained_models/Vid4Gauss.npy'
+            kernel_folder = '../pretrained_models/Mixed/Vid4.npy'
             dataset_folder = '../dataset/Vid4'
-        elif data_mode == 'MM522':
-            kernel_folder = '../experiments/pretrained_models/MM522Gauss.npy'
-            dataset_folder = '../dataset/MM522val'
-        else:
-            kernel_folder = '../experiments/pretrained_models/REDSGauss.npy'
+        elif data_mode == 'REDS':
+            kernel_folder = '../pretrained_models/Mixed/REDS.npy'
             dataset_folder = '../dataset/REDS/train'
+        elif data_mode == 'Vimeo':
+            if degradation_mode == 'preset':
+                raise NotImplementedError('We do not support preset mode in Vimeo dataset')
+            dataset_folder = '../dataset/vimeo_septuplet'
+        else:
+            raise NotImplementedError()
 
-        GT_dataset_folder = osp.join(dataset_folder, 'HR')
         save_folder_name = 'preset' if degradation_mode == 'preset' else degradation_mode + '_' + str('{:.1f}'.format(sig_x)) + '_' + str('{:.1f}'.format(sig_y)) + '_' + str('{:.1f}'.format(args.theta))
         save_folder = osp.join(dataset_folder, 'LR_'+save_folder_name, 'X2')
         if not osp.exists(save_folder):
@@ -87,16 +89,19 @@ def main():
             if not osp.exists(save_folder3):
                 os.makedirs(save_folder3)
 
-        avg_psnr_l, avg_psnr_center_l, avg_psnr_border_l = [], [], []
-        subfolder_name_l = []
-
-        subfolder_GT_l = sorted(glob.glob(osp.join(GT_dataset_folder, '*')))
-        if data_mode == 'REDS':
-            subfolder_GT_l = [k for k in subfolder_GT_l if
-                              k.find('000') >= 0 or k.find('011') >= 0 or k.find('015') >= 0 or k.find('020') >= 0]
-        elif data_mode == 'MM522':
-            subfolder_GT_l = [k for k in subfolder_GT_l if
-                              k.find('001') >= 0 or k.find('005') >= 0 or k.find('008') >= 0 or k.find('009') >= 0]
+        if data_mode == 'Vimeo':
+            GT_dataset_folder = osp.join(dataset_folder, 'sequences')
+            meta = osp.join(dataset_folder, 'sep_testlist.txt')
+            with open(meta, 'r') as f:
+                seq_list = sorted(f.read().splitlines())
+            subfolder_GT_l = [osp.join(GT_dataset_folder, seq_ind) for seq_ind in seq_list]
+            
+        else:
+            GT_dataset_folder = osp.join(dataset_folder, 'HR')
+            subfolder_GT_l = sorted(glob.glob(osp.join(GT_dataset_folder, '*')))
+            if data_mode == 'REDS':
+                subfolder_GT_l = [k for k in subfolder_GT_l if
+                                k.find('000') >= 0 or k.find('011') >= 0 or k.find('015') >= 0 or k.find('020') >= 0]
 
         sig_x, sig_y, the = float(sig_x), float(sig_y), float(the)
 
@@ -110,20 +115,25 @@ def main():
             else:
                 kernel_gen = oldkg.Degradation(kernel_size, 2, type=0.7, **gen_kwargs)
 
-            subfolder_name = osp.basename(subfolder_GT)
-            subfolder_name_l.append(subfolder_name)
+            if data_mode == 'Vimeo':
+                sub1 = osp.basename(osp.dirname(subfolder_GT))
+                sub2 = osp.basename(subfolder_GT)
+                subfolder_name = osp.join(sub1, sub2)
+            else:
+                subfolder_name = osp.basename(subfolder_GT)
+            
             save_subfolder = osp.join(save_folder, subfolder_name)
             if not osp.exists(save_subfolder):
-                os.mkdir(save_subfolder)
+                os.makedirs(save_subfolder)
 
             save_subfolder2 = osp.join(save_folder2, subfolder_name)
             if not osp.exists(save_subfolder2):
-                os.mkdir(save_subfolder2)
+                os.makedirs(save_subfolder2)
             
             if scale == 4:
                 save_subfolder3 = osp.join(save_folder3, subfolder_name)
                 if not osp.exists(save_subfolder3):
-                    os.mkdir(save_subfolder3)
+                    os.makedirs(save_subfolder3)
 
             img_GT_path_l = sorted(glob.glob(osp.join(subfolder_GT, '*')))
             seq_length = len(img_GT_path_l)
@@ -171,8 +181,6 @@ def main():
                 count = 0
                 imgs_GT_l = imgs_GT.split(32)
                 for img_batch in imgs_GT_l:
-                    if degradation_mode == 'preset':
-                        kernel_gen.set_kernel_directly(kernel_preset[count])
                     img_lr_batch = kernel_gen.apply(img_batch)
                     img_lr_batch = img_lr_batch.permute(0, 2, 3, 1).cpu().numpy()
                     img_lr_batch = (img_lr_batch.clip(0, 1) * 255).round()

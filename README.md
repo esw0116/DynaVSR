@@ -122,6 +122,18 @@ Two ways to train DynaVSR network.
 
 <br>
 
+## References
+If you like the paper, please cite our paper using:
+```
+@inproceedings{lee2021dynavsr,
+  title={DynaVSR: Dynamic Adaptive Blind Video Super-Resolution},
+  author={Lee, Suyoung and Choi, Myungsub and Lee, Kyoung Mu},
+  booktitle={Proceedings of the IEEE/CVF Winter Conference on Applications of Computer Vision},
+  pages={2093--2102},
+  year={2021}
+}
+```
+
 ## Update Log
 - [2020-12-09] First code cleanup, Publish pretrained models
 - [2020-12-29] Add arbitrary input data testing script
